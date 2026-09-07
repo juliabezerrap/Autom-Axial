@@ -9,15 +9,33 @@
 ![Channel](https://img.shields.io/badge/canal-WhatsApp-25D366)
 
 </div>
+---
+
+## 👤 Sobre este projeto
+
+Desenvolvido por Julia Bezerra como projeto freelance para a Axial Academy.
+
+<div align="center">
+
+*Documentação técnica · Última atualização: setembro/2026*
+
+</div>
 
 Este repositório documenta dois fluxos de automação distintos, desenvolvidos no mesmo contrato para a Axial Academy:
 
 1. **[Eduardo](#-projeto-1--eduardo-agente-de-atendimento)** — assistente virtual de IA para triagem e admissões do Equine Spine Focus.
 2. **[Automação de Conteúdo](#-projeto-2--automação-de-conteúdo-instagramyoutube--grupos-whatsapp)** — captação e distribuição controlada de posts/vídeos para grupos de WhatsApp.
 
-Ambos rodam na mesma conta do Make e compartilham o mesmo pool de créditos mensais — ver [Recursos compartilhados](#-recursos-compartilhados).
+Ambos rodam na mesma conta do Make e compartilham o mesmo pool de créditos mensais
 
 ---
+### ✨ Destaques técnicos
+
+- 🤖 **Bot de WhatsApp com IA (Gemini)** rodando em paralelo a um fluxo 100% determinístico para alunos já matriculados — sem misturar os dois públicos.
+- 🗄️ **Contorno de limitação de plano**: apenas 1 Data Store disponível no Make → simulei múltiplas "tabelas" numa única estrutura, diferenciando registros por chave (`roteiro_whatsapp`, `atual`, `<telefone>`).
+- 🔒 **Camadas de segurança no atendimento**: rede de segurança por palavra-chave (transbordo humano mesmo se a IA errar), proibição de diagnóstico clínico e bloqueio de imagens/áudios chegando à IA.
+- 📲 **Sistema de distribuição de conteúdo** com fila unificada (captação automática + manual), cadência anti-spam (1 disparo/4 dias) e segmentação por grupo.
+- ⚙️ **Dois sistemas independentes coexistindo na mesma conta Make**, compartilhando pool de créditos e limite de cenários ativos — com documentação separada para não confundir escopos.
 
 ## 📑 Sumário
 
