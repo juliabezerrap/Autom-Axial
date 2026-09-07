@@ -89,9 +89,9 @@ Assistente virtual de WhatsApp para triagem e admissões do curso **Equine Spine
 2. **Status = aguardando_resposta_aluno** (2ª mensagem) → envia Mensagem 2 (transbordo) → grava `status: transbordo_humano`.
 3. **Status = transbordo_humano** (3ª mensagem em diante) → **não responde nada**.
 
-### 1.2 Data Store (único, por limite do plano)
+### 1.2 Data Store 
 
-> O plano permite **apenas 1 Data Store por conta** — todos os "assuntos" convivem numa única estrutura de 10 colunas, diferenciados pela **key** de cada registro.
+> Todos os "assuntos" convivem numa única estrutura de 10 colunas, diferenciados pela **key** de cada registro.
 
 | Campo | Tipo | Usado por |
 |---|---|---|
@@ -157,11 +157,8 @@ Ordem do prompt: instruções e regras → formato dos marcadores de link → fo
 - **Rede de segurança de transbordo** — palavra-chave força o transbordo mesmo se a IA "errar".
 - **Links nunca são gerados pela IA** — só marcadores; URL real inserida depois, de forma determinística.
 
-### 1.6 Pendências / itens em aberto
+### 1.6 Melhorias futuras opicionais
 
-- [ ] Confirmar coluna do telefone na planilha de alunos (`Celular (G)` vs. `Celular (H)`).
-- [ ] Publicar o app no Meta for Developers.
-- [ ] Confirmar método de pagamento na conta WhatsApp Business.
 - [ ] Implementar expiração automática do cache do roteiro.
 - [ ] Avaliar tabela de log/auditoria separada.
 
