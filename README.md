@@ -52,23 +52,8 @@ Assistente virtual de WhatsApp para triagem e admissões do curso **Equine Spine
 
 ### 1.1 Visão geral do fluxo
 
-```text
-Mensagem chega (Webhook nativo, módulo 88)
-        │
-        ▼
-Router: é mensagem de texto? ──não──▶ resposta fixa pedindo texto (módulo 11)
-        │ sim
-        ▼
-Google Sheets: telefone está na planilha de matriculados? (módulo 3)
-        │
-   ┌────┴────┐
-   │         │
- não é     é aluno
- aluno    matriculado
-   │         │
-   ▼         ▼
-[fluxo IA]  [fluxo aluno]
-```
+<img width="1574" height="535" alt="image" src="https://github.com/user-attachments/assets/ceb41b5f-9194-431d-8edb-fc7071f88817" />
+
 
 **Fluxo "não é aluno" (com IA):**
 
@@ -217,8 +202,8 @@ Sistema que capta publicações de Instagram e YouTube e as distribui de forma c
 │   (Fila de Conteúdo)  │
 └──────────┬────────────┘
            ▼
-   Cenário de Disparo (Make)
-   Roda a cada 4 dias (5760 min)
+   Cenário de Disparo 
+   Roda a cada 4 dias 
            │
            ▼
    Google Sheets → Search Rows
