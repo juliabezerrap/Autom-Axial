@@ -32,7 +32,6 @@ Ambos rodam na mesma conta do Make e compartilham o mesmo pool de créditos mens
 ### ✨ Destaques técnicos
 
 - 🤖 **Bot de WhatsApp com IA (Gemini)** rodando em paralelo a um fluxo 100% determinístico para alunos já matriculados — sem misturar os dois públicos.
-- 🗄️ **Contorno de limitação de plano**: apenas 1 Data Store disponível no Make → simulei múltiplas "tabelas" numa única estrutura, diferenciando registros por chave (`roteiro_whatsapp`, `atual`, `<telefone>`).
 - 🔒 **Camadas de segurança no atendimento**: rede de segurança por palavra-chave (transbordo humano mesmo se a IA errar), proibição de diagnóstico clínico e bloqueio de imagens/áudios chegando à IA.
 - 📲 **Sistema de distribuição de conteúdo** com fila unificada (captação automática + manual), cadência anti-spam (1 disparo/4 dias) e segmentação por grupo.
 - ⚙️ **Dois sistemas independentes coexistindo na mesma conta Make**, compartilhando pool de créditos e limite de cenários ativos — com documentação separada para não confundir escopos.
@@ -70,7 +69,7 @@ Assistente virtual de WhatsApp para triagem e admissões do curso **Equine Spine
 
 ### 1.1 Visão geral do fluxo
 
-<img width="1574" height="535" alt="image" src="https://github.com/user-attachments/assets/ceb41b5f-9194-431d-8edb-fc7071f88817" />
+<img width="1754" height="743" alt="image" src="https://github.com/user-attachments/assets/0c73e2bf-9e2e-438b-8d5c-ef4223496977" />
 
 
 **Fluxo "não é aluno" (com IA):**
@@ -113,54 +112,77 @@ Assistente virtual de WhatsApp para triagem e admissões do curso **Equine Spine
 
 <details>
 <summary>Clique para expandir a tabela completa de módulos</summary>
-
 | ID | Módulo | Função |
 |---|---|---|
-| 88 | Watch Events | Trigger — recebe eventos da WhatsApp Cloud API |
-| 10 | Router | Separa mensagem de texto vs. outros tipos |
-| 3 | Google Sheets – Search Rows | Verifica se o telefone é aluno matriculado (coluna G) |
+| 88 | Watch Events | Trigger — recebe eventos da WhatsApp Cloud API (mensagens, status, e potencialmente `smb_message_echoes`) |
+| 149/150/152 | ExistRecord + IfElse + GetRecord | Lê o `status` daquele telefone, protegido contra telefone novo |
+| 157 | Router | Bloqueia **qualquer** mensagem (texto, áudio, imagem) se `status = transbordo_humano`, antes mesmo de checar o tipo |
+| 10 / 11 | Router + Send Message | Separa mensagem de texto vs. outros tipos |
+| 3 | Google Sheets – Search Rows | Verifica se o telefone é aluno matriculado (**coluna H**, formato só-dígitos) |
 | 42 | Router | Separa fluxo "é aluno" vs. "não é aluno" |
-| 20 / 25 / 18 / 19 / 49 / 63 | ExistRecord + IfElse + GetRecord/AddRecord | Cache do roteiro (Google Docs) |
-| 103 / 104 / 85 | ExistRecord + IfElse + GetRecord | Leitura protegida do histórico |
-| 91 / 92 | Router | Checa `status = transbordo_humano` antes de chamar a IA |
-| 62 | Gemini – Simple Text Prompt | Geração da resposta |
-| 68 | Parse JSON | Extrai `resposta`, `transbordo`, `perfil`, `elegivel`, `etapa` |
-| 80 | GetRecord | Busca os 6 links reais |
+| 20/25/18/19/49/63 | ExistRecord + IfElse + GetRecord/AddRecord | Cache do roteiro (Google Docs) |
+| 103/104/85 | ExistRecord + IfElse + GetRecord | Leitura protegida do histórico |
+| 91/92 | Router | Checa `status = transbordo_humano` antes de chamar a IA (camada redundante com o 157, mantida por segurança) |
+| 134 | Gemini AI – Extract structured data | Geração da resposta com Response Schema nativo |
+| 142 | Retry (error handler do 134) | Reprocessa automaticamente em caso de instabilidade momentânea do Gemini |
+| 80 | GetRecord | Busca os 6 links reais + `pdf_media_id` |
 | 73 | Set Variable | Substitui `Link 0X` pelos links reais (`resposta_final`) |
-| 74 / 75 / 76 / 89 / 90 | Router + AddRecord + Send Message | Decide e executa transbordo vs. envio normal |
-| 113 / 114 / 95 | ExistRecord + IfElse + GetRecord | Leitura protegida do status do aluno |
-| 97 / 44 / 99 / 101 / 102 | Router + Send Message + AddRecord | Mensagem 1 / Mensagem 2 / silêncio do fluxo aluno |
-
+| 179 | Router | Decide entre texto normal (90), template com botão (ver 1.7) e fallback |
+| 90 | Send a Message | Envio da resposta normal |
+| 168 | Router (rotas não-exclusivas) | Dispara em paralelo: PDF (se `enviar_pdf`) e "à disposição" (se `etapa` contém "passo2") |
+| 127 | Send a Message (Document) | Envia o PDF usando `pdf_media_id` |
+| 170 | Send a Message | "Qualquer dúvida, estou à disposição." |
+| 74/75/76/89 | Router + AddRecord + Send Message | Decide e executa transbordo vs. envio normal |
+| 113/114/95 | ExistRecord + IfElse + GetRecord | Leitura protegida do status do aluno |
+| 97/44/101 | Router + Send Message + AddRecord | Reconhecimento do aluno + transbordo imediato (mensagem única) |
+ 
 </details>
+
 
 ### 1.4 Prompt do Gemini (módulo 62)
 
-```json
-{
-  "resposta": "texto da resposta ao cliente",
-  "transbordo": true,
-  "perfil": "veterinario",
-  "elegivel": true,
-  "etapa": "identificador curto da etapa atual"
-}
-```
+**Migração importante:** o projeto começou com o módulo `Google Gemini AI – Simple Text Prompt` (pedindo à IA que respondesse em JSON via instrução de texto) mais um módulo de limpeza (`replace()` para remover blocos ` ```json `) e um `Parse JSON` separado. Essa abordagem quebrava com frequência (a IA ocasionalmente embrulhava a resposta em markdown, principalmente com o prompt mais longo).
+ 
+**Hoje o módulo 134 usa a ação `Extract structured data`**, que aceita um **Response Schema** nativo — a Meta/Google garante a validade do JSON na origem, sem necessidade de limpeza nem parse manual. Os módulos antigos (Gemini simples + limpeza + Parse JSON) foram removidos.
+ 
+**Campos do Response Schema (Required marcado onde a IA sempre decide algo; não-obrigatório onde o valor pode legitimamente não existir ainda):**
+ 
+| Campo | Tipo | Required | Motivo |
+|---|---|---|---|
+| `resposta` | String | Sim | sempre gerado |
+| `transbordo` | Boolean | Sim | decisão sempre tomada |
+| `perfil` | String | Não | só existe após o Passo 1 |
+| `elegivel` | Boolean | Não | só existe para estudantes, após as 2 perguntas |
+| `etapa` | String | Sim | usada em lógica crítica downstream |
+| `enviar_pdf` | Boolean | Sim | decisão sempre tomada (default false) |
+| `responder` | Boolean | Sim | decide se o texto da IA deve ser enviado ou substituído por "à disposição" |
+| `botoes` | String | Sim | qual template de botão usar (`"nenhum"` na maioria dos casos) |
+| `primeiro_nome` | String | Sim | usado para variável de template (separado de `resposta`, que não é usada quando a mensagem sai via template) |
+ 
+**Modelo em uso:** `gemini-3.1-flash-lite` 
+ 
+**Padrão de nomenclatura de `etapa`** (usado por filtros em vários pontos do fluxo — precisa ser respeitado ao editar o prompt):
+- Primeira mensagem / menu ainda não respondido → não contém "passo2/3/4" (ex: `"cenario_b_passo1"`).
+- Resposta ao menu 1/2/3 → contém `"passo2"`.
+- Resposta ao follow-up ("o que achou da proposta?") → contém `"passo3"`.
+- Continuação depois disso (matrícula, motivo, etc.) → contém `"passo4"`.
 
 Ordem do prompt: instruções e regras → formato dos marcadores de link → formato JSON acima → roteiro (`{{63.conteudo}}`) → histórico (`{{ifempty(85.mensagens; ...)}}`) → nome do cliente (`{{88.contacts[].profile.name}}`) → mensagem nova (`{{88.messages[].text.body}}`).
 
-> **Regra embutida no roteiro:** uma primeira mensagem que não seja a frase-gatilho exata do Cenário A (ex: "oi") deve ser tratada como gatilho do Cenário B (orgânico), não como "fora do escopo".
 
 ### 1.5 Regras críticas de segurança
 
 - **Fidelidade textual** — frases entre aspas no manual são fixas; a IA nunca parafraseia.
 - **Proibição de diagnóstico** — nunca avalia clinicamente nem recomenda tratamento.
 - **Imagens/áudios nunca chegam à IA** — recebem resposta fixa pedindo texto.
-- **Rede de segurança de transbordo** — palavra-chave força o transbordo mesmo se a IA "errar".
 - **Links nunca são gerados pela IA** — só marcadores; URL real inserida depois, de forma determinística.
+- **Nunca pular etapa não respondida** — só avança para "Estudante Elegível/Não Elegível" se as duas perguntas anteriores tiverem resposta real e visível no histórico.
 
 ### 1.6 Melhorias futuras opicionais
 
 - [ ] Implementar expiração automática do cache do roteiro.
 - [ ] Avaliar tabela de log/auditoria separada.
+- [ ] Implementar botões nos links das mensagens
 
 ### 1.7 Checklist de testes de ponta a ponta
 
@@ -194,7 +216,7 @@ Sistema que capta publicações de Instagram e YouTube e as distribui de forma c
 |---|---|
 | **Make** | Motor de automação — orquestra captação, fila e disparo |
 | **Z-API** | Ponte de conexão com o WhatsApp (número dedicado, não-oficial) |
-| **RSS.app** | Gera feeds RSS das contas de Instagram (sem RSS nativo) |
+| **Instagram for business** | Gera feeds RSS das contas de Instagram |
 | **Google Sheets** | Banco de dados / fila de controle de todo o conteúdo |
 | **YouTube RSS nativo** | Feed público, sem necessidade de ferramenta extra |
 
@@ -203,7 +225,7 @@ Sistema que capta publicações de Instagram e YouTube e as distribui de forma c
 ```text
 ┌──────────────┐     ┌──────────────┐
 │ YouTube (RSS)│     │ Instagram x3 │
-│    nativo     │     │ (via RSS.app)│
+│    nativo     │     │ │
 └───────┬───────┘     └───────┬──────┘
         │                     │
         ▼                     ▼
@@ -301,12 +323,11 @@ Os dois projetos rodam na **mesma conta do Make**, o que significa:
 
 | Item | Custo estimado |
 |---|---|
-| Make (plano Core, compartilhado pelos 2 projetos) | ~R$ 50-60 |
-| Z-API (Projeto 2) | R$ 55-99 |
-| RSS.app (Projeto 2) | ~R$ 45 |
+| Make (plano Core, compartilhado pelos 2 projetos) | R$ 50 |
+| Z-API (Projeto 2) | R$ 99 |
 | Gemini API (Projeto 1) | Gratuito no volume atual (tier free) |
 | WhatsApp Cloud API (Projeto 1) | Conversas gratuitas até a cota mensal; cobrança por conversa acima disso |
-| **Total estimado** | **~R$ 150-200/mês** |
+| **Total estimado** | **R$ 150 /mês** |
 
 ## 🔑 Acessos e propriedade
 
