@@ -80,7 +80,8 @@ São dois cenários no Make:
 
 ### 1.1 Visão geral do fluxo
 
-<img width="1754" height="743" alt="Visão geral do fluxo do agente no Make" src="https://github.com/user-attachments/assets/0c73e2bf-9e2e-438b-8d5c-ef4223496977" />
+<img width="1619" height="574" alt="image" src="https://github.com/user-attachments/assets/e4b4cd78-78df-4866-8644-5ea4cd027bdd" />
+
 
 **Filtros de entrada (antes de qualquer resposta):**
 
